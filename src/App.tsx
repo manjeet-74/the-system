@@ -1,11 +1,24 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+
 function App() {
   return (
-    <div className="min-h-screen bg-[#04070d] text-[#e6f1f7] flex items-center justify-center p-4">
-      <h1 className="font-rajdhani text-5xl font-bold tracking-wider text-[#3fd6f5]">
-        THE SYSTEM
-      </h1>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
