@@ -1,5 +1,6 @@
 import { useAuth } from '../hooks/useAuth';
 import { StatusBar } from '../components/hud/StatusBar';
+import { QuestList } from '../components/quests/QuestList';
 
 export function DashboardPage() {
   const { signOut } = useAuth();
@@ -30,6 +31,11 @@ export function DashboardPage() {
         {/* HUD Status Bar */}
         <section>
           <StatusBar />
+        </section>
+
+        {/* Daily Quests List */}
+        <section>
+          <QuestList />
         </section>
       </div>
     </div>
