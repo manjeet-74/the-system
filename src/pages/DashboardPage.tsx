@@ -1,38 +1,37 @@
 import { useAuth } from '../hooks/useAuth';
+import { StatusBar } from '../components/hud/StatusBar';
 
 export function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#04070d] text-[#e6f1f7] p-8">
-      <header className="flex justify-between items-center max-w-4xl mx-auto border-b border-[#3fd6f5]/20 pb-4 mb-8">
-        <div>
-          <h1 className="font-rajdhani text-3xl font-bold text-[#3fd6f5]">
-            THE SYSTEM
-          </h1>
-          <p className="text-sm text-[#6d81a0]">
-            Logged in as: <span className="text-[#e6f1f7]">{user?.email ?? user?.user_metadata?.user_name}</span>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={signOut}
-          className="border border-[#ff4d5e] text-[#ff4d5e] hover:bg-[#ff4d5e]/10 font-rajdhani font-semibold px-4 py-2 rounded transition-colors duration-200 cursor-pointer"
-        >
-          Sign Out
-        </button>
-      </header>
+    <div className="min-h-screen bg-[#04070d] text-[#e6f1f7] p-4 sm:p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Top Navigation */}
+        <header className="flex justify-between items-center border-b border-[#3fd6f5]/20 pb-4">
+          <div className="flex items-center gap-3">
+            <h1 className="font-rajdhani text-3xl font-extrabold tracking-wider text-[#3fd6f5]">
+              THE SYSTEM
+            </h1>
+            <span className="text-[10px] font-rajdhani font-bold bg-[#3fd6f5]/10 text-[#3fd6f5] border border-[#3fd6f5]/30 px-2 py-0.5 rounded tracking-widest">
+              HUD v1.0
+            </span>
+          </div>
 
-      <main className="max-w-4xl mx-auto">
-        <div className="bg-[#0a0f1c] border border-[#3fd6f5]/20 rounded-lg p-6 text-center">
-          <h2 className="font-rajdhani text-2xl font-semibold text-[#3fd6f5] mb-2">
-            HUNTER DASHBOARD
-          </h2>
-          <p className="text-[#6d81a0]">
-            Welcome to THE SYSTEM. Dashboard HUD components will be linked in upcoming commits.
-          </p>
-        </div>
-      </main>
+          <button
+            type="button"
+            onClick={signOut}
+            className="border border-[#ff4d5e]/40 text-[#ff4d5e] hover:bg-[#ff4d5e]/10 font-rajdhani font-semibold px-4 py-1.5 rounded transition-colors text-sm cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </header>
+
+        {/* HUD Status Bar */}
+        <section>
+          <StatusBar />
+        </section>
+      </div>
     </div>
   );
 }
