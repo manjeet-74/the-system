@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { useDailyQuests } from '../../hooks/useDailyQuests';
+import { useQuestTemplates } from '../../hooks/useQuestTemplates';
 import { QuestRow } from './QuestRow';
+import { AddQuestForm } from './AddQuestForm';
 
 export function QuestList() {
   const { dailyLogs, loading, error, toggleQuest, isToggling } = useDailyQuests();
+  const { archiveQuest } = useQuestTemplates();
+  const [showAddForm, setShowAddForm] = useState(false);
 
   if (loading) {
     return (
@@ -25,8 +30,9 @@ export function QuestList() {
     );
   }
 
-  const completedCount = dailyLogs.filter((log) => log.done).length;
-  const totalCount = dailyLogs.length;
+  const activeDailyLogs = dailyLogs.filter((log) => !log.quest_templates.archived);
+  const completedCount = activeDailyLogs.filter((log) => log.done).length;
+  const totalCount = activeDailyLogs.length;
 
   return (
     <div className="bg-[#0a0f1c] border border-[#3fd6f5]/30 p-6 rounded-lg shadow-[0_0_20px_rgba(63,214,245,0.1)] space-y-4">
@@ -41,25 +47,43 @@ export function QuestList() {
           </span>
         </div>
 
-        {totalCount > 0 && completedCount === totalCount && (
-          <span className="font-rajdhani text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded tracking-wider animate-pulse">
-            ALL QUESTS CLEARED
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {totalCount > 0 && completedCount === totalCount && (
+            <span className="font-rajdhani text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded tracking-wider animate-pulse">
+              ALL QUESTS CLEARED
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowAddForm((prev) => !prev)}
+            className="font-rajdhani text-xs font-bold border border-[#3fd6f5]/40 text-[#3fd6f5] hover:bg-[#3fd6f5]/10 px-3 py-1 rounded transition-colors cursor-pointer"
+          >
+            {showAddForm ? 'CLOSE' : '+ NEW QUEST'}
+          </button>
+        </div>
       </div>
 
+      {/* Add Custom Quest Form Drawer */}
+      {showAddForm && (
+        <div className="mb-4">
+          <AddQuestForm onSuccess={() => setShowAddForm(false)} />
+        </div>
+      )}
+
       {/* Quest List */}
-      {dailyLogs.length === 0 ? (
+      {activeDailyLogs.length === 0 ? (
         <div className="text-center py-8 text-[#6d81a0] font-rajdhani">
-          NO DAILY QUESTS AVAILABLE FOR TODAY
+          NO ACTIVE DAILY QUESTS AVAILABLE TODAY
         </div>
       ) : (
         <div className="space-y-3">
-          {dailyLogs.map((log) => (
+          {activeDailyLogs.map((log) => (
             <QuestRow
               key={log.id}
               log={log}
               onToggle={toggleQuest}
+              onArchive={archiveQuest}
               disabled={isToggling}
             />
           ))}

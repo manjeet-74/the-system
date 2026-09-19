@@ -3,6 +3,7 @@ import type { DailyLogWithQuest } from '../../hooks/useDailyQuests';
 interface QuestRowProps {
   log: DailyLogWithQuest;
   onToggle: (logId: string, currentDone: boolean) => void;
+  onArchive?: (questId: string) => void;
   disabled?: boolean;
 }
 
@@ -14,9 +15,10 @@ const STAT_COLORS: Record<string, string> = {
   SENSE: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
 };
 
-export function QuestRow({ log, onToggle, disabled }: QuestRowProps) {
+export function QuestRow({ log, onToggle, onArchive, disabled }: QuestRowProps) {
   const quest = log.quest_templates;
   const isDone = log.done;
+  const isDefault = quest.is_default;
   const statStyle = STAT_COLORS[quest.stat] || 'text-[#3fd6f5] border-[#3fd6f5]/30 bg-[#3fd6f5]/10';
 
   return (
@@ -61,7 +63,7 @@ export function QuestRow({ log, onToggle, disabled }: QuestRowProps) {
         </div>
       </div>
 
-      {/* Meta (Stat + XP) */}
+      {/* Meta (Stat + XP + Actions) */}
       <div className="flex items-center gap-2">
         {quest.verification_method !== 'manual' && (
           <span className="text-[10px] font-rajdhani font-semibold text-[#6d81a0] border border-[#6d81a0]/30 px-2 py-0.5 rounded uppercase">
@@ -73,6 +75,28 @@ export function QuestRow({ log, onToggle, disabled }: QuestRowProps) {
         >
           +{quest.xp} {quest.stat}
         </span>
+
+        {/* Archive Action for Non-Default Quests */}
+        {!isDefault && onArchive && (
+          <button
+            type="button"
+            title="Archive Quest"
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchive(quest.id);
+            }}
+            className="p-1 text-[#6d81a0] hover:text-[#ff4d5e] hover:bg-[#ff4d5e]/10 rounded transition-colors cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
