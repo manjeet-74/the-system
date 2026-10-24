@@ -7,12 +7,12 @@ import { CompletionRateChart } from '../components/analytics/CompletionRateChart
 const WINDOWS = [7, 30, 90] as const;
 
 export function AnalyticsPage() {
-  const [window, setWindow] = useState<7 | 30 | 90>(90);
+  const [timeWindow, setTimeWindow] = useState<7 | 30 | 90>(90);
   const {
     heatmap, heatmapLoading, heatmapError,
     statHistory, statHistoryLoading, statHistoryError,
     completionRates, completionRatesLoading, completionRatesError,
-  } = useAnalytics(window);
+  } = useAnalytics(timeWindow);
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -27,9 +27,9 @@ export function AnalyticsPage() {
           {WINDOWS.map((w) => (
             <button
               key={w}
-              onClick={() => setWindow(w)}
+              onClick={() => setTimeWindow(w)}
               className={`font-rajdhani font-bold text-xs px-3 py-1.5 rounded border transition-colors cursor-pointer ${
-                window === w
+                timeWindow === w
                   ? 'bg-[#3fd6f5]/10 border-[#3fd6f5]/50 text-[#3fd6f5]'
                   : 'border-[#3fd6f5]/20 text-[#6d81a0] hover:border-[#3fd6f5]/40'
               }`}
@@ -50,7 +50,7 @@ export function AnalyticsPage() {
         ) : heatmapError ? (
           <ErrorMsg msg={(heatmapError as Error).message} />
         ) : (
-          <Heatmap data={heatmap} days={window} />
+          <Heatmap data={heatmap} days={timeWindow} />
         )}
       </section>
 

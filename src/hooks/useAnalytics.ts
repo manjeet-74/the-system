@@ -63,12 +63,14 @@ export function useAnalytics(windowDays = 90) {
     queryKey: ['analytics_stat_history', user?.id],
     queryFn: async () => {
       if (!user) return [];
+      const since = new Date(Date.now() - windowDays * 86400000).toISOString();
       const { data, error } = await supabase
         .from('stat_history')
         .select('recorded_at, str, int_, vit, sense, agi')
         .eq('user_id', user.id)
+        .gte('recorded_at', since)
         .order('recorded_at', { ascending: true })
-        .limit(90);
+        .limit(windowDays);
       if (error) throw error;
       return data ?? [];
     },

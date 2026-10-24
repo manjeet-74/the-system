@@ -23,13 +23,9 @@ Deno.serve(async (_req) => {
     const { user_id, repo_full_name, last_checked_at } = link;
 
     try {
-      // Fetch the user's GitHub provider token via auth admin API
-      const { data: userIdentities } = await supabase.auth.admin.getUserById(user_id);
-      const githubIdentity = userIdentities?.user?.identities?.find(
-        (i: any) => i.provider === 'github'
-      );
-      const providerToken = githubIdentity?.identity_data?.access_token;
-
+      // NOTE: GitHub OAuth provider tokens are not stored in identity_data.
+      // We poll unauthenticated (60 req/hr shared limit) for public repos only.
+      // Users who need private repo support should add a PAT in Settings (future feature).
       const since = last_checked_at ?? new Date(Date.now() - 86400000).toISOString();
       const githubUrl = `https://api.github.com/repos/${repo_full_name}/commits?since=${since}&per_page=1`;
 
@@ -37,9 +33,6 @@ Deno.serve(async (_req) => {
         'User-Agent': 'the-system-app',
         Accept: 'application/vnd.github.v3+json',
       };
-      if (providerToken) {
-        headers['Authorization'] = `Bearer ${providerToken}`;
-      }
 
       const githubRes = await fetch(githubUrl, { headers });
 

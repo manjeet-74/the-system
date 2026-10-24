@@ -7,12 +7,16 @@ create table forge_challenges (
   unlocked_at timestamptz not null default now(),
   deadline timestamptz,
   completed_at timestamptz,
-  reward_xp int not null default 0
+  reward_xp int not null default 0,
+  source_streak_day int not null default 0
 );
 
 alter table forge_challenges enable row level security;
 create policy "select own forge" on forge_challenges for select using (auth.uid() = user_id);
-create policy "complete own forge" on forge_challenges for update using (auth.uid() = user_id);
+-- Only allow updating active challenges (prevents users from backdating completions on expired rows)
+create policy "complete own forge" on forge_challenges for update
+  using (auth.uid() = user_id and status = 'active')
+  with check (auth.uid() = user_id);
 -- Inserts are service-role only (done by the rollover function).
 
 -- RPC to award forge XP transactionally

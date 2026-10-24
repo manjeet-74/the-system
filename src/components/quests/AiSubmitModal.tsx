@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import type { DailyLogWithQuest } from '../../hooks/useDailyQuests';
@@ -24,6 +24,11 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
   const [state, setState] = useState<SubmitState>('idle');
   const [result, setResult] = useState<GradeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => { mounted.current = false; };
+  }, []);
 
   const quest = log.quest_templates;
 
@@ -71,6 +76,8 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
           .eq('id', submission.id)
           .single();
 
+        if (!mounted.current) return; // Modal was closed; stop polling
+
         if (!updatedSub || updatedSub.status === 'pending') {
           if (attempts++ < maxAttempts) {
             await new Promise((r) => setTimeout(r, 1000));
@@ -83,6 +90,7 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
           throw new Error(updatedSub.feedback ?? 'Grading failed. Please try again.');
         }
 
+        if (!mounted.current) return;
         setResult({
           pass: updatedSub.pass ?? false,
           score: updatedSub.score ?? 0,
@@ -94,6 +102,7 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
 
       await poll();
     } catch (err: any) {
+      if (!mounted.current) return;
       setState('error');
       setErrorMsg(err.message ?? 'Submission failed');
     }

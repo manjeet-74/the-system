@@ -60,7 +60,7 @@ Deno.serve(async (_req) => {
 
       const emailBody = `You still have ${incompleteCount} quest${incompleteCount > 1 ? 's' : ''} open today.${streakLine}\n\nOpen THE SYSTEM and complete your quests before midnight.`;
 
-      await fetch('https://api.resend.com/emails', {
+      const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -73,6 +73,12 @@ Deno.serve(async (_req) => {
           text: emailBody,
         }),
       });
+
+      if (!resendRes.ok) {
+        const errBody = await resendRes.text();
+        results.push(`${user_id}: Resend error ${resendRes.status} — ${errBody}`);
+        continue;
+      }
 
       results.push(`${user_id}: reminder sent to ${email}`);
     } catch (err: any) {

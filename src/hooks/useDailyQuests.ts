@@ -64,41 +64,9 @@ export function useDailyQuests() {
         return existingLogs as DailyLogWithQuest[];
       }
 
-      // 2. Client-side fallback: ensure today's quests exist if no logs generated yet
-      const { data: activeTemplates, error: templatesError } = await supabase
-        .from('quest_templates')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('archived', false);
-
-      if (templatesError) throw templatesError;
-
-      if (!activeTemplates || activeTemplates.length === 0) {
-        return [];
-      }
-
-      const logsToInsert = activeTemplates.map((template) => ({
-        user_id: user.id,
-        log_date: todayStr,
-        quest_id: template.id,
-        done: false,
-      }));
-
-      const { error: insertError } = await supabase
-        .from('daily_logs')
-        .upsert(logsToInsert, { onConflict: 'user_id,log_date,quest_id', ignoreDuplicates: true });
-
-      if (insertError) throw insertError;
-
-      // Re-fetch joined logs after insertion
-      const { data: createdLogs, error: reFetchError } = await supabase
-        .from('daily_logs')
-        .select('*, quest_templates(*)')
-        .eq('user_id', user.id)
-        .eq('log_date', todayStr);
-
-      if (reFetchError) throw reFetchError;
-      return (createdLogs || []) as DailyLogWithQuest[];
+      // daily-rollover Edge Function is the source of truth for creating daily_logs.
+      // Return empty here — the user will see a waiting state until rollover runs at midnight UTC.
+      return [];
     },
     enabled: !!user,
   });

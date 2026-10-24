@@ -168,13 +168,12 @@ Deno.serve(async (_req) => {
           if (newStreak === threshold) {
             const forgeDef = FORGE_TIERS[threshold];
 
-            // Only insert if user hasn't had this tier at this exact streak count
+            // Dedup by source_streak_day so each milestone fires at most once per lifetime
             const { count } = await supabase
               .from('forge_challenges')
               .select('id', { count: 'exact', head: true })
               .eq('user_id', userId)
-              .eq('tier', forgeDef.tier)
-              .gte('unlocked_at', new Date(Date.now() - 7 * 86400000).toISOString());
+              .eq('source_streak_day', threshold);
 
             if (count === 0) {
               const deadline = new Date(Date.now() + forgeDef.daysDeadline * 86400000);
@@ -184,6 +183,7 @@ Deno.serve(async (_req) => {
                 brief: forgeDef.brief,
                 deadline: deadline.toISOString(),
                 reward_xp: forgeDef.rewardXp,
+                source_streak_day: threshold,
               });
             }
           }
