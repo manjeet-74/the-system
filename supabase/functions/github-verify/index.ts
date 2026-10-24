@@ -62,41 +62,32 @@ Deno.serve(async (_req) => {
         for (const log of logs ?? []) {
           const template = (log as any).quest_templates;
           if (template?.verification_method === 'github') {
-            // Mark done via complete_quest RPC using service role
-            const { error: rpcError } = await supabase.rpc('complete_quest_service', {
-              p_log_id: log.id,
-              p_done: true,
-              p_verified_via: 'github',
-            });
+            // Direct update + stat increment (service role bypasses RLS)
+            await supabase
+              .from('daily_logs')
+              .update({
+                done: true,
+                completed_at: new Date().toISOString(),
+                xp_awarded: template.xp,
+                verified_via: 'github',
+              })
+              .eq('id', log.id);
 
-            if (rpcError) {
-              // Fallback: direct update + stat increment
+            const statCol = template.stat === 'INT' ? 'int_' : template.stat.toLowerCase();
+            const { data: stats } = await supabase
+              .from('player_stats')
+              .select(statCol)
+              .eq('user_id', user_id)
+              .single();
+
+            if (stats) {
               await supabase
-                .from('daily_logs')
-                .update({
-                  done: true,
-                  completed_at: new Date().toISOString(),
-                  xp_awarded: template.xp,
-                  verified_via: 'github',
-                })
-                .eq('id', log.id);
-
-              const statCol = template.stat === 'INT' ? 'int_' : template.stat.toLowerCase();
-              const { data: stats } = await supabase
                 .from('player_stats')
-                .select(statCol)
-                .eq('user_id', user_id)
-                .single();
-
-              if (stats) {
-                await supabase
-                  .from('player_stats')
-                  .update({
-                    [statCol]: (stats as any)[statCol] + template.xp,
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq('user_id', user_id);
-              }
+                .update({
+                  [statCol]: (stats as any)[statCol] + template.xp,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('user_id', user_id);
             }
 
             results.push(`${user_id}: github quest auto-completed`);

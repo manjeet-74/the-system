@@ -113,9 +113,11 @@ Deno.serve(async (_req) => {
           // Group by stat for batch update
           const statDecay: Record<string, number> = {};
           for (const log of incompleteLogs) {
-            const stat = (log.quest_templates as any)?.stat?.toLowerCase();
-            if (stat) {
-              statDecay[stat] = (statDecay[stat] || 0) + 8;
+            const rawStat: string = (log.quest_templates as any)?.stat ?? '';
+            // Map stat name to player_stats column name (INT → int_)
+            const col = rawStat === 'INT' ? 'int_' : rawStat.toLowerCase();
+            if (col) {
+              statDecay[col] = (statDecay[col] || 0) + 8;
             }
           }
 
@@ -233,51 +235,59 @@ async function generateTodaysLogs(
 
   // Insert Redemption Trial if penalty is active
   if (penaltyActive) {
-    // Find the user's lowest stat
-    const { data: stats } = await supabase
-      .from('player_stats')
-      .select('str, int_, vit, sense, agi')
+    // Check if a redemption trial log already exists for today to avoid duplicates
+    const { data: existingPenalty } = await supabase
+      .from('daily_logs')
+      .select('id')
       .eq('user_id', userId)
-      .single();
+      .eq('log_date', today)
+      .eq('is_penalty', true)
+      .maybeSingle();
 
-    let lowestStat = 'STR';
-    if (stats) {
-      const statMap: Record<string, number> = {
-        STR: stats.str,
-        INT: stats.int_,
-        VIT: stats.vit,
-        SENSE: stats.sense,
-        AGI: stats.agi,
-      };
-      lowestStat = Object.entries(statMap).sort(([, a], [, b]) => a - b)[0][0];
-    }
+    if (!existingPenalty) {
+      // Find the user's lowest stat
+      const { data: stats } = await supabase
+        .from('player_stats')
+        .select('str, int_, vit, sense, agi')
+        .eq('user_id', userId)
+        .single();
 
-    // Create a redemption trial quest template (ad-hoc, non-default)
-    const { data: redemptionTemplate } = await supabase
-      .from('quest_templates')
-      .insert({
-        user_id: userId,
-        title: 'Redemption Trial — clear this first',
-        stat: lowestStat,
-        xp: 25,
-        is_default: false,
-        verification_method: 'manual',
-        archived: false,
-      })
-      .select()
-      .single();
+      let lowestStat = 'STR';
+      if (stats) {
+        const statMap: Record<string, number> = {
+          STR: stats.str,
+          INT: stats.int_,
+          VIT: stats.vit,
+          SENSE: stats.sense,
+          AGI: stats.agi,
+        };
+        lowestStat = Object.entries(statMap).sort(([, a], [, b]) => a - b)[0][0];
+      }
 
-    if (redemptionTemplate) {
-      await supabase.from('daily_logs').upsert(
-        {
+      // Create a redemption trial quest template (ad-hoc, non-default)
+      const { data: redemptionTemplate } = await supabase
+        .from('quest_templates')
+        .insert({
+          user_id: userId,
+          title: 'Redemption Trial — clear this first',
+          stat: lowestStat,
+          xp: 25,
+          is_default: false,
+          verification_method: 'manual',
+          archived: false,
+        })
+        .select()
+        .single();
+
+      if (redemptionTemplate) {
+        await supabase.from('daily_logs').insert({
           user_id: userId,
           log_date: today,
           quest_id: redemptionTemplate.id,
           done: false,
           is_penalty: true,
-        },
-        { onConflict: 'user_id,log_date,quest_id', ignoreDuplicates: true }
-      );
+        });
+      }
     }
   }
 }
