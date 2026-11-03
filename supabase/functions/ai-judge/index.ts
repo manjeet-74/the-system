@@ -2,7 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+// Free Google Gemini key from https://aistudio.google.com/ (no credit card).
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
+const GEMINI_MODEL = 'gemini-3.8-flash';
 
 Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -38,27 +40,34 @@ The xp field should be between 0 and ${quest.xp} (the maximum for this quest).`;
 
     const userContent = `Quest: ${quest.title}\n\nRubric: ${quest.rubric ?? 'No specific rubric. Use general code quality and completeness standards.'}\n\nSubmission:\n${submission.submission_text}`;
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 256,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userContent }],
-      }),
-    });
+    // Google Gemini (free tier). responseMimeType: application/json makes the model
+    // return clean JSON directly — no markdown fences to strip in the normal case.
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userContent }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 512,
+            // Gemini 3.x Flash has thinking ON by default, which consumes the output
+            // budget and truncates the JSON (finishReason: MAX_TOKENS). Grading against a
+            // rubric needs no deep reasoning, so disable thinking — full budget goes to the answer.
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
+      }
+    );
 
-    if (!anthropicRes.ok) {
-      throw new Error(`Anthropic API error: ${anthropicRes.status}`);
+    if (!geminiRes.ok) {
+      throw new Error(`Gemini API error: ${geminiRes.status}`);
     }
 
-    const anthropicData = await anthropicRes.json();
-    const rawText: string = anthropicData.content?.[0]?.text ?? '';
+    const geminiData = await geminiRes.json();
+    const rawText: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
     // Strip markdown fences if present
     const jsonText = rawText.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
@@ -79,7 +88,7 @@ The xp field should be between 0 and ${quest.xp} (the maximum for this quest).`;
         feedback,
         xp_awarded: xpAwarded,
         stat_allocated: quest.stat,
-        model: 'claude-haiku-4-5',
+        model: GEMINI_MODEL,
         graded_at: new Date().toISOString(),
       })
       .eq('id', submissionId);

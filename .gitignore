@@ -17,8 +17,13 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+# Personal study notes — kept local, never pushed
+LEARNING.md
+
 .idea
 .DS_Store
+# macOS AppleDouble metadata files (created on external/non-HFS drives)
+._*
 *.suo
 *.ntvs*
 *.njsproj

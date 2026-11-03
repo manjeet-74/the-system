@@ -48,7 +48,7 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
           quest_id: quest.id,
           daily_log_id: log.id,
           submission_text: text.trim(),
-          model: 'claude-haiku-4-5',
+          model: 'gemini-3.8-flash',
           status: 'pending',
         })
         .select()
@@ -201,16 +201,18 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
               </div>
             </div>
 
-            <p className="text-sm text-[#e6f1f7] font-rajdhani">{result.feedback}</p>
+            <p className="text-sm text-[#e6f1f7] font-rajdhani selectable">{result.feedback}</p>
 
             <button
               onClick={() => {
-                onSuccess();
+                if (result.pass) {
+                  onSuccess();
+                }
                 onClose();
               }}
               className="w-full border border-[#3fd6f5]/40 text-[#3fd6f5] hover:bg-[#3fd6f5]/10 font-rajdhani font-bold py-2 rounded transition-colors cursor-pointer"
             >
-              {result.pass ? 'CLOSE' : 'TRY AGAIN TOMORROW'}
+              {result.pass ? 'CLOSE' : 'UNDERSTOOD'}
             </button>
           </div>
         )}

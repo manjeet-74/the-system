@@ -23,16 +23,20 @@ export function QuestRow({ log, onToggle, onArchive, disabled }: QuestRowProps) 
   const isDefault = quest.is_default;
   const isGitHub = quest.verification_method === 'github';
   const isAiJudge = quest.verification_method === 'ai_judge';
+  const isManual = !isGitHub && !isAiJudge;
+  const canUndo = isDone && isManual; // manual quests can be un-ticked if clicked by mistake
   const statStyle = STAT_COLORS[quest.stat] || 'text-[#3fd6f5] border-[#3fd6f5]/30 bg-[#3fd6f5]/10';
   const [showAiModal, setShowAiModal] = useState(false);
 
   const handleRowClick = () => {
-    if (disabled || isDone) return;
+    if (disabled) return;
     if (isAiJudge) {
+      if (isDone) return; // AI-graded results aren't manually reversible
       setShowAiModal(true);
       return;
     }
     if (isGitHub) return; // GitHub quests are auto-verified only
+    // Manual quests toggle both directions: complete, or undo an accidental tick
     onToggle(log.id, isDone);
   };
 
@@ -40,9 +44,20 @@ export function QuestRow({ log, onToggle, onArchive, disabled }: QuestRowProps) 
     <>
       <div
         onClick={handleRowClick}
+        title={
+          canUndo
+            ? 'Click to undo — mark this quest incomplete'
+            : isDone
+            ? 'Quest completed for today'
+            : isGitHub
+            ? 'Auto-verified on GitHub commit push'
+            : undefined
+        }
         className={`group flex items-center justify-between p-4 bg-[#04070d] border rounded transition-all duration-200 ${
           isGitHub && !isDone
             ? 'cursor-not-allowed border-[#3fd6f5]/20 opacity-70'
+            : canUndo
+            ? 'border-[#3fd6f5]/15 opacity-60 hover:opacity-100 hover:border-[#3fd6f5]/40 cursor-pointer'
             : isDone
             ? 'border-[#3fd6f5]/10 opacity-50 bg-[#04070d]/60 cursor-default'
             : 'border-[#3fd6f5]/30 hover:border-[#3fd6f5]/60 hover:shadow-[0_0_12px_rgba(63,214,245,0.15)] cursor-pointer'

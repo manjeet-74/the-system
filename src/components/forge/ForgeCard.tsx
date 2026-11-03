@@ -32,7 +32,7 @@ export function ForgeCard({ challenge, onComplete, isCompleting }: ForgeCardProp
         </span>
       </div>
 
-      <p className="text-[#e6f1f7] font-rajdhani text-base">{challenge.brief}</p>
+      <p className="text-[#e6f1f7] font-rajdhani text-base selectable">{challenge.brief}</p>
 
       <div className="flex justify-between items-center">
         <span className="text-xs text-[#6d81a0] font-rajdhani">

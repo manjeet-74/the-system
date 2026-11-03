@@ -20,10 +20,13 @@ export function SettingsPage() {
   // GitHub Link state
   const [repoInput, setRepoInput] = useState('');
   const [repoSaved, setRepoSaved] = useState(false);
+  const [githubError, setGithubError] = useState('');
+  const [notifError, setNotifError] = useState('');
 
   // Notification pref state
-  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('20:00');
+  const [notifSaved, setNotifSaved] = useState(false);
 
   const githubQuery = useQuery<GitHubLink | null>({
     queryKey: ['github_link', user?.id],
@@ -69,6 +72,11 @@ export function SettingsPage() {
   const saveGitHubMutation = useMutation({
     mutationFn: async () => {
       if (!user) return;
+      const trimmed = repoInput.trim();
+      // Validate owner/repo shape so a typo doesn't silently 404 in github-verify.
+      if (trimmed && !/^[\w.-]+\/[\w.-]+$/.test(trimmed)) {
+        throw new Error('Repository must be in the format owner/repo-name');
+      }
       const githubUsername = user.user_metadata?.user_name ?? null;
       await supabase.from('github_links').upsert({
         user_id: user.id,
@@ -78,22 +86,33 @@ export function SettingsPage() {
     },
     onSuccess: () => {
       setRepoSaved(true);
+      setGithubError('');
       setTimeout(() => setRepoSaved(false), 2000);
       queryClient.invalidateQueries({ queryKey: ['github_link', user?.id] });
+    },
+    onError: (err: any) => {
+      setGithubError(err?.message ?? 'Failed to save GitHub settings.');
     },
   });
 
   const saveNotifMutation = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      await supabase.from('notification_prefs').upsert({
+      const { error } = await supabase.from('notification_prefs').upsert({
         user_id: user.id,
         email_enabled: emailEnabled,
         reminder_time: reminderTime,
-      });
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
     },
     onSuccess: () => {
+      setNotifError('');
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 2000);
       queryClient.invalidateQueries({ queryKey: ['notification_prefs', user?.id] });
+    },
+    onError: (err: any) => {
+      setNotifError(err?.message ?? 'Failed to save notification preferences.');
     },
   });
 
@@ -131,6 +150,9 @@ export function SettingsPage() {
             {saveGitHubMutation.isPending ? 'SAVING...' : repoSaved ? 'SAVED ✓' : 'SAVE'}
           </button>
         </div>
+        {githubError && (
+          <p className="text-[#ff4d5e] font-rajdhani text-xs">{githubError}</p>
+        )}
         {githubQuery.data?.github_username && (
           <p className="text-[#6d81a0] font-rajdhani text-xs">
             GitHub account: <span className="text-[#3fd6f5]">@{githubQuery.data.github_username}</span>
@@ -148,17 +170,36 @@ export function SettingsPage() {
         </p>
 
         <div className="flex items-center justify-between">
-          <span className="font-rajdhani text-[#e6f1f7] text-sm">Email reminders</span>
+          <div>
+            <span className="font-rajdhani text-[#e6f1f7] text-sm">Email reminders</span>
+            <p className="text-[#6d81a0] font-rajdhani text-xs mt-0.5">
+              {emailEnabled ? 'ENABLED — daily email at reminder time' : 'DISABLED'}
+            </p>
+          </div>
           <button
-            onClick={() => setEmailEnabled(!emailEnabled)}
-            className={`w-12 h-6 rounded-full transition-colors cursor-pointer relative ${
-              emailEnabled ? 'bg-[#3fd6f5]' : 'bg-[#3fd6f5]/20'
-            }`}
+            type="button"
+            role="switch"
+            aria-checked={emailEnabled}
+            onClick={() => setEmailEnabled(prev => !prev)}
+            aria-label={emailEnabled ? 'Disable email reminders' : 'Enable email reminders'}
+            className="relative rounded-full cursor-pointer flex-shrink-0"
+            style={{
+              width: 56,
+              height: 28,
+              backgroundColor: emailEnabled ? '#3fd6f5' : '#33415c',
+              transition: 'background-color 300ms ease',
+            }}
           >
             <span
-              className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                emailEnabled ? 'translate-x-7' : 'translate-x-1'
-              }`}
+              className="absolute rounded-full bg-white"
+              style={{
+                width: 22,
+                height: 22,
+                top: 3,
+                left: emailEnabled ? 31 : 3,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                transition: 'left 300ms ease',
+              }}
             />
           </button>
         </div>
@@ -182,11 +223,11 @@ export function SettingsPage() {
           disabled={saveNotifMutation.isPending}
           className="bg-[#3fd6f5]/10 border border-[#3fd6f5]/40 text-[#3fd6f5] hover:bg-[#3fd6f5]/20 font-rajdhani font-bold text-sm px-4 py-2 rounded transition-colors cursor-pointer disabled:opacity-50"
         >
-          {saveNotifMutation.isPending ? 'SAVING...' : 'SAVE PREFERENCES'}
+          {saveNotifMutation.isPending ? 'SAVING...' : notifSaved ? 'SAVED ✓' : 'SAVE PREFERENCES'}
         </button>
 
-        {saveNotifMutation.isSuccess && (
-          <p className="text-emerald-400 font-rajdhani text-xs">Preferences saved.</p>
+        {notifError && (
+          <p className="text-[#ff4d5e] font-rajdhani text-xs">{notifError}</p>
         )}
       </section>
     </div>

@@ -5,7 +5,7 @@ import { QuestRow } from './QuestRow';
 import { AddQuestForm } from './AddQuestForm';
 
 export function QuestList() {
-  const { dailyLogs, loading, error, toggleQuest, isToggling } = useDailyQuests();
+  const { dailyLogs, loading, error, toggleQuest, isToggling, toggleError, refetchDailyQuests } = useDailyQuests();
   const { archiveQuest } = useQuestTemplates();
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -64,6 +64,12 @@ export function QuestList() {
         </div>
       </div>
 
+      {toggleError && (
+        <div className="p-3 border border-[#ff4d5e]/40 bg-[#ff4d5e]/10 rounded text-sm text-[#ff4d5e] font-rajdhani">
+          Could not update quest: {toggleError.message}
+        </div>
+      )}
+
       {/* Add Custom Quest Form Drawer */}
       {showAddForm && (
         <div className="mb-4">
@@ -73,8 +79,20 @@ export function QuestList() {
 
       {/* Quest List */}
       {activeDailyLogs.length === 0 ? (
-        <div className="text-center py-8 text-[#6d81a0] font-rajdhani">
-          NO ACTIVE DAILY QUESTS AVAILABLE TODAY
+        <div className="text-center py-8 space-y-3">
+          <p className="text-[#6d81a0] font-rajdhani text-sm">
+            INITIALIZING YOUR DAILY MISSIONS...
+          </p>
+          <p className="text-[#6d81a0]/70 font-rajdhani text-xs">
+            Your first quests will appear shortly.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetchDailyQuests()}
+            className="font-rajdhani text-xs font-bold border border-[#3fd6f5]/40 text-[#3fd6f5] hover:bg-[#3fd6f5]/10 px-4 py-1.5 rounded transition-colors cursor-pointer"
+          >
+            REFRESH
+          </button>
         </div>
       ) : (
         <div className="space-y-3">

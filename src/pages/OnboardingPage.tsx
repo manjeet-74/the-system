@@ -186,7 +186,7 @@ export function OnboardingPage() {
               <div
                 className={`font-rajdhani font-bold text-xl px-3 py-1 rounded border ${
                   timeLeft <= 10
-                    ? 'border-[#ff4d5e] text-[#ff4d5e] animate-ping'
+                    ? 'border-[#ff4d5e] text-[#ff4d5e] animate-pulse'
                     : 'border-[#3fd6f5]/40 text-[#3fd6f5]'
                 }`}
               >

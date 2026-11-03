@@ -1,7 +1,7 @@
 import { usePlayerStats } from '../../hooks/usePlayerStats';
 import { useProfile } from '../../hooks/useProfile';
 import { useStreak } from '../../hooks/useStreak';
-import { levelOf, rankOf, totalXP, xpIntoLevel } from '../../lib/gameMath';
+import { levelOf, rankOf, totalXP, xpIntoLevel, streakMultiplier } from '../../lib/gameMath';
 import { RankBadge } from './RankBadge';
 import { XPBar } from './XPBar';
 import { StatGrid } from './StatGrid';
@@ -24,6 +24,7 @@ export function StatusBar() {
   const rank = rankOf(level);
   const currentXP = xpIntoLevel(stats);
   const overallXP = totalXP(stats);
+  const multiplier = streakMultiplier(streak.current_streak);
 
   return (
     <div className="bg-[#0a0f1c] border border-[#3fd6f5]/30 p-6 rounded-lg shadow-[0_0_20px_rgba(63,214,245,0.1)] space-y-6">
@@ -51,6 +52,13 @@ export function StatusBar() {
                 🔥 STREAK: {streak.current_streak} {streak.current_streak === 1 ? 'DAY' : 'DAYS'}
                 {streak.penalty_active && ' [PENALTY ACTIVE]'}
               </span>
+
+              {/* XP multiplier badge — only shown once the streak actually boosts XP */}
+              {multiplier > 1 && !streak.penalty_active && (
+                <span className="font-rajdhani text-xs font-bold border px-2.5 py-0.5 rounded bg-[#3fd6f5]/10 text-[#3fd6f5] border-[#3fd6f5]/40">
+                  ⚡ {multiplier}× XP
+                </span>
+              )}
             </div>
             <div className="font-rajdhani text-sm text-[#6d81a0] mt-1">
               LEVEL <span className="text-[#3fd6f5] font-bold text-lg">{level}</span>

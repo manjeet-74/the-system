@@ -12,18 +12,27 @@ export function ProtectedRoute({ children, allowUnonboarded = false }: Protected
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
-  if (authLoading || (!!user && profileLoading)) {
-    return (
-      <div className="min-h-screen bg-[#04070d] text-[#e6f1f7] flex items-center justify-center">
-        <div className="font-rajdhani text-xl text-[#3fd6f5] animate-pulse">
-          INITIALIZING SYSTEM...
-        </div>
+  const initializing = (
+    <div className="min-h-screen bg-[#04070d] text-[#e6f1f7] flex items-center justify-center">
+      <div className="font-rajdhani text-xl text-[#3fd6f5] animate-pulse">
+        INITIALIZING SYSTEM...
       </div>
-    );
+    </div>
+  );
+
+  if (authLoading || (!!user && profileLoading)) {
+    return initializing;
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Logged in but the profile row isn't visible yet (the handle_new_user trigger can lag
+  // a beat behind the first OAuth session). Keep initializing rather than rendering a
+  // profile-less page whose child queries would error on a missing row.
+  if (!profile) {
+    return initializing;
   }
 
   // Gating based on courage_test_passed

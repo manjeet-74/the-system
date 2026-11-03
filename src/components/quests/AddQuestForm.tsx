@@ -18,6 +18,7 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
   const [xp, setXp] = useState<number>(10);
   const [verificationMethod, setVerificationMethod] = useState<'manual' | 'github' | 'ai_judge'>('manual');
   const [rubric, setRubric] = useState('');
+  const [recurring, setRecurring] = useState(true);
   const [error, setError] = useState('');
 
   const addQuestMutation = useMutation({
@@ -35,6 +36,7 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
           is_default: false,
           verification_method: verificationMethod,
           rubric: verificationMethod === 'ai_judge' ? rubric.trim() : null,
+          recurring,
           archived: false,
         })
         .select()
@@ -42,14 +44,8 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
 
       if (insertError) throw insertError;
 
-      // 2. Check if today's daily_logs exist for this user; if so, create today's log row for this new quest immediately
-      const { data: existingLogs } = await supabase
-        .from('daily_logs')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('log_date', todayStr);
-
-      if (existingLogs && existingLogs.length > 0 && newTemplate) {
+      // 2. Always create today's log row for this new quest immediately
+      if (newTemplate) {
         await supabase.from('daily_logs').insert({
           user_id: user.id,
           log_date: todayStr,
@@ -64,6 +60,7 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
       setTitle('');
       setXp(10);
       setRubric('');
+      setRecurring(true);
       setError('');
       queryClient.invalidateQueries({ queryKey: ['quest_templates', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['daily_logs', user?.id, todayStr] });
@@ -78,6 +75,14 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required');
+      return;
+    }
+    if (!Number.isFinite(xp) || xp < 1 || xp > 100) {
+      setError('XP reward must be between 1 and 100');
+      return;
+    }
+    if (verificationMethod === 'ai_judge' && !rubric.trim()) {
+      setError('A grading rubric is required for AI-evaluated quests');
       return;
     }
     addQuestMutation.mutate();
@@ -177,6 +182,36 @@ export function AddQuestForm({ onSuccess }: AddQuestFormProps) {
           />
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setRecurring((prev) => !prev)}
+        className="flex items-center gap-3 w-full text-left group cursor-pointer"
+      >
+        <span
+          className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
+            recurring
+              ? 'bg-[#3fd6f5] border-[#3fd6f5] text-[#04070d]'
+              : 'border-[#3fd6f5]/50 bg-transparent group-hover:border-[#3fd6f5]'
+          }`}
+        >
+          {recurring && (
+            <svg className="w-3.5 h-3.5 stroke-current stroke-[3]" viewBox="0 0 24 24" fill="none">
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+        <span>
+          <span className="block font-rajdhani text-sm font-semibold text-[#e6f1f7]">
+            Repeat every day
+          </span>
+          <span className="block font-rajdhani text-xs text-[#6d81a0]">
+            {recurring
+              ? 'This quest will appear again every day.'
+              : 'One-time only — appears today, then gone tomorrow.'}
+          </span>
+        </span>
+      </button>
 
       <button
         type="submit"

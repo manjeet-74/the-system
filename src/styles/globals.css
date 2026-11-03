@@ -11,6 +11,16 @@
   --muted: #6d81a0;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -18,8 +28,73 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  /* App-like feel: UI chrome uses the default arrow cursor and is not text-selectable,
+     so clicking headings, labels, badges and buttons never shows a text caret. */
+  cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Rajdhani', sans-serif;
+}
+
+/* Re-enable the text caret + selection only where the user actually types. */
+input,
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+/* Dropdowns behave like buttons. */
+select {
+  cursor: pointer;
+}
+
+/* Disabled controls must not look clickable. */
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Content the user may legitimately want to copy (AI feedback, briefs). */
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+/* Professional thin scrollbar that matches the HUD palette. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(63, 214, 245, 0.2);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(63, 214, 245, 0.35);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(63, 214, 245, 0.2) var(--bg);
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -60,19 +60,22 @@ export function useAnalytics(windowDays = 90) {
   });
 
   const statHistoryQuery = useQuery<StatSnapshot[]>({
-    queryKey: ['analytics_stat_history', user?.id],
+    queryKey: ['analytics_stat_history', user?.id, windowDays],
     queryFn: async () => {
       if (!user) return [];
       const since = new Date(Date.now() - windowDays * 86400000).toISOString();
+      // Order DESC + limit so we keep the MOST RECENT snapshots (ascending + limit would
+      // return the oldest N and silently drop recent data), then reverse to chronological
+      // order for the line chart.
       const { data, error } = await supabase
         .from('stat_history')
         .select('recorded_at, str, int_, vit, sense, agi')
         .eq('user_id', user.id)
         .gte('recorded_at', since)
-        .order('recorded_at', { ascending: true })
+        .order('recorded_at', { ascending: false })
         .limit(windowDays);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).reverse();
     },
     enabled: !!user,
   });

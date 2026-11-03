@@ -15,10 +15,12 @@ const STAT_LABELS: { key: keyof Omit<PlayerStats, 'user_id' | 'updated_at'>; lab
 export function StatGrid({ stats }: StatGridProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full">
-      {STAT_LABELS.map(({ key, label, desc }) => (
+      {STAT_LABELS.map(({ key, label, desc }, idx) => (
         <div
           key={key}
-          className="bg-[#04070d] border border-[#3fd6f5]/20 p-3 rounded text-center relative overflow-hidden group hover:border-[#3fd6f5]/50 transition-colors"
+          className={`bg-[#04070d] border border-[#3fd6f5]/20 p-3 rounded text-center relative overflow-hidden group hover:border-[#3fd6f5]/50 transition-colors ${
+            idx === STAT_LABELS.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+          }`}
         >
           <div className="text-[10px] font-rajdhani text-[#6d81a0] font-semibold tracking-wider">
             {desc}

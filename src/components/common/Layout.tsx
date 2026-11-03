@@ -43,14 +43,20 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
           <button
             type="button"
-            onClick={signOut}
+            onClick={async () => {
+              try {
+                await signOut();
+              } catch (err) {
+                console.error('Sign out failed:', err);
+              }
+            }}
             className="border border-[#ff4d5e]/40 text-[#ff4d5e] hover:bg-[#ff4d5e]/10 font-rajdhani font-semibold px-4 py-1.5 rounded transition-colors text-xs cursor-pointer"
           >
             SIGN OUT
           </button>
         </div>
         {/* Mobile nav */}
-        <nav className="sm:hidden flex overflow-x-auto px-4 pb-2 gap-1">
+        <nav className="sm:hidden flex overflow-x-auto px-4 pb-2 gap-1 items-center">
           {NAV_LINKS.map(({ to, label, exact }) => (
             <NavLink
               key={to}
@@ -67,6 +73,13 @@ export function Layout({ children }: { children: ReactNode }) {
               {label}
             </NavLink>
           ))}
+          <button
+            type="button"
+            onClick={async () => { try { await signOut(); } catch (err) { console.error('Sign out failed:', err); } }}
+            className="ml-auto border border-[#ff4d5e]/40 text-[#ff4d5e] font-rajdhani font-semibold px-3 py-1.5 rounded text-xs whitespace-nowrap cursor-pointer flex-shrink-0"
+          >
+            SIGN OUT
+          </button>
         </nav>
       </header>
 

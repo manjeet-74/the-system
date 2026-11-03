@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
@@ -16,6 +17,8 @@ interface BossChallenge {
 export function BossPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [completeError, setCompleteError] = useState('');
 
   const { data: challenges = [], isLoading, error } = useQuery<BossChallenge[]>({
     queryKey: ['boss_challenges', user?.id],
@@ -33,16 +36,21 @@ export function BossPage() {
   });
 
   const completeMutation = useMutation({
-    mutationFn: async (challengeId: string) => {
-      const { error } = await supabase
-        .from('boss_challenges')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', challengeId)
-        .eq('user_id', user?.id ?? '');
+    mutationFn: async ({ challengeId }: { challengeId: string }) => {
+      // Transactional, idempotent XP award via SECURITY DEFINER RPC.
+      // Guarded on status='active' server-side, so it can never double-award.
+      const { error } = await supabase.rpc('complete_boss', { p_boss_id: challengeId });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boss_challenges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['player_stats', user?.id] });
+    },
+    onError: (err: any) => {
+      setCompleteError(err?.message ?? 'Failed to defeat boss. Please try again.');
+    },
+    onSettled: (_data, _err, { challengeId }) => {
+      setPendingIds(prev => { const next = new Set(prev); next.delete(challengeId); return next; });
     },
   });
 
@@ -76,6 +84,11 @@ export function BossPage() {
             <h3 className="font-rajdhani font-bold text-[#e6f1f7] tracking-wider text-sm">
               ACTIVE BOSSES
             </h3>
+            {completeError && (
+              <div className="p-3 border border-[#ff4d5e]/40 bg-[#ff4d5e]/10 rounded text-sm text-[#ff4d5e] font-rajdhani">
+                {completeError}
+              </div>
+            )}
             {active.length === 0 ? (
               <div className="border border-[#ff4d5e]/10 rounded-lg p-6 text-center">
                 <p className="text-[#6d81a0] font-rajdhani text-sm">
@@ -100,13 +113,17 @@ export function BossPage() {
                       </span>
                     </div>
                     <h4 className="font-rajdhani text-lg font-bold text-[#e6f1f7]">{c.title}</h4>
-                    <p className="text-[#6d81a0] font-rajdhani text-sm">{c.brief}</p>
+                    <p className="text-[#6d81a0] font-rajdhani text-sm selectable">{c.brief}</p>
                     <button
-                      onClick={() => completeMutation.mutate(c.id)}
-                      disabled={completeMutation.isPending}
+                      onClick={() => {
+                        setCompleteError('');
+                        setPendingIds(prev => new Set([...prev, c.id]));
+                        completeMutation.mutate({ challengeId: c.id });
+                      }}
+                      disabled={pendingIds.has(c.id)}
                       className="border border-[#ff4d5e]/50 text-[#ff4d5e] hover:bg-[#ff4d5e]/10 font-rajdhani font-bold text-sm px-4 py-1.5 rounded transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      {completeMutation.isPending ? 'COMPLETING...' : 'DEFEAT BOSS'}
+                      {pendingIds.has(c.id) ? 'COMPLETING...' : 'DEFEAT BOSS'}
                     </button>
                   </div>
                 );

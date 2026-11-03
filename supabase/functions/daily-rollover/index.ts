@@ -70,21 +70,26 @@ Deno.serve(async (_req) => {
         continue;
       }
 
-      // Skip if already processed today
-      if (streakRow.last_active_date === today) {
-        results.push(`${userId}: already processed`);
+      // Atomic day-claim: only ONE concurrent invocation may process this user today.
+      // The UPDATE only matches rows whose last_active_date is still null or before today,
+      // so a second call (another tab/device, or cron overlapping the client trigger)
+      // claims nothing and bails — preventing double stat decay / double streak counting.
+      const { data: claimed } = await supabase
+        .from('streaks')
+        .update({ last_active_date: today })
+        .eq('user_id', userId)
+        .or(`last_active_date.is.null,last_active_date.lt.${today}`)
+        .select('user_id');
+
+      if (!claimed || claimed.length === 0) {
+        results.push(`${userId}: already processed (claim lost)`);
         continue;
       }
 
-      // First-ever run for this user
+      // First-ever run for this user (used the OLD last_active_date read before the claim).
       if (!streakRow.last_active_date) {
         await generateTodaysLogs(supabase, userId, today);
-        await supabase
-          .from('streaks')
-          .update({ last_active_date: today })
-          .eq('user_id', userId);
-
-        // Snapshot stats
+        // last_active_date already set to today by the claim above.
         await snapshotStats(supabase, userId);
         results.push(`${userId}: first run, logs generated`);
         continue;
@@ -213,12 +218,14 @@ async function generateTodaysLogs(
   today: string,
   penaltyActive = false
 ) {
-  // Fetch active quest templates
+  // Fetch active, recurring quest templates.
+  // One-time quests (recurring = false) get their single log at creation time and are never regenerated here.
   const { data: templates } = await supabase
     .from('quest_templates')
     .select('id, stat, xp')
     .eq('user_id', userId)
-    .eq('archived', false);
+    .eq('archived', false)
+    .eq('recurring', true);
 
   if (!templates || templates.length === 0) return;
 
@@ -264,7 +271,10 @@ async function generateTodaysLogs(
         lowestStat = Object.entries(statMap).sort(([, a], [, b]) => a - b)[0][0];
       }
 
-      // Create a redemption trial quest template (ad-hoc, non-default)
+      // Create a redemption trial quest template (ad-hoc, non-default, ONE-TIME).
+      // recurring:false is critical — otherwise generateTodaysLogs (which selects
+      // recurring=true templates) would regenerate this penalty quest as a normal
+      // daily quest every day forever, and each penalty episode would add another.
       const { data: redemptionTemplate } = await supabase
         .from('quest_templates')
         .insert({
@@ -274,6 +284,7 @@ async function generateTodaysLogs(
           xp: 25,
           is_default: false,
           verification_method: 'manual',
+          recurring: false,
           archived: false,
         })
         .select()

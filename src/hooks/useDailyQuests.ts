@@ -64,9 +64,20 @@ export function useDailyQuests() {
         return existingLogs as DailyLogWithQuest[];
       }
 
-      // daily-rollover Edge Function is the source of truth for creating daily_logs.
-      // Return empty here — the user will see a waiting state until rollover runs at midnight UTC.
-      return [];
+      // No logs yet — invoke the daily-rollover edge function to seed today's quests for this user.
+      // The function processes all profiles but skips those already rolled over today, so it is safe
+      // to call at any time. New users (null last_active_date) will have their first logs generated.
+      await supabase.functions.invoke('daily-rollover');
+
+      // Re-fetch after rollover
+      const { data: newLogs, error: refetchError } = await supabase
+        .from('daily_logs')
+        .select('*, quest_templates(*)')
+        .eq('user_id', user.id)
+        .eq('log_date', todayStr);
+
+      if (refetchError) throw refetchError;
+      return (newLogs ?? []) as DailyLogWithQuest[];
     },
     enabled: !!user,
   });
@@ -92,7 +103,10 @@ export function useDailyQuests() {
     error,
     refetchDailyQuests: refetch,
     toggleQuest: (logId: string, currentDone: boolean) =>
-      toggleQuestMutation.mutateAsync({ logId, done: !currentDone }),
+      // Swallow the rejection here so an RPC failure doesn't become an unhandled promise
+      // rejection; the error is surfaced to the UI via toggleError below.
+      toggleQuestMutation.mutateAsync({ logId, done: !currentDone }).catch(() => {}),
     isToggling: toggleQuestMutation.isPending,
+    toggleError: toggleQuestMutation.error as Error | null,
   };
 }

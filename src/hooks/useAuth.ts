@@ -38,6 +38,21 @@ export function useAuth() {
     }
   };
 
+  // Sign in an existing user with email + password.
+  const signInWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  // Create a new account. Returns whether a session was created immediately:
+  // if the Supabase project has "Confirm email" ON, data.session is null and the
+  // user must click a link in their inbox before they can log in.
+  const signUpWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return { needsConfirmation: data.session === null };
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -46,5 +61,5 @@ export function useAuth() {
     }
   };
 
-  return { session, user, loading, signInWithGitHub, signOut };
+  return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
 }
