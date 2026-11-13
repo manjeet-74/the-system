@@ -33,3 +33,6 @@ LEARNING.md
 
 # Contains the cron secret — never commit
 supabase/cron.local.sql
+
+# Values to paste into Vercel (public browser-side values only)
+vercel-env.local.txt
