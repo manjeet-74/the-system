@@ -1,0 +1,22 @@
+{
+  "name": "THE SYSTEM",
+  "short_name": "THE SYSTEM",
+  "description": "Level up your life. Clear daily quests, build streaks, rank up from E to S.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#04070d",
+  "theme_color": "#04070d",
+  "categories": ["productivity", "games"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today's quests", "url": "/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Boss fights", "url": "/boss", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

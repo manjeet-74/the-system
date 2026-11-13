@@ -48,7 +48,7 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
           quest_id: quest.id,
           daily_log_id: log.id,
           submission_text: text.trim(),
-          model: 'gemini-3.8-flash',
+          model: 'gemini',
           status: 'pending',
         })
         .select()
@@ -63,7 +63,16 @@ export function AiSubmitModal({ log, onClose, onSuccess }: AiSubmitModalProps) {
         body: { submission_id: submission.id },
       });
 
-      if (invokeErr) throw invokeErr;
+      if (invokeErr) {
+        // The function records a human-readable reason on the submission row (busy AI,
+        // daily limit, ...). Show that instead of the generic "non-2xx status" message.
+        const { data: failed } = await supabase
+          .from('ai_submissions')
+          .select('feedback')
+          .eq('id', submission.id)
+          .maybeSingle();
+        throw new Error(failed?.feedback ?? invokeErr.message);
+      }
 
       // Poll for graded result (max 30s)
       let attempts = 0;

@@ -9,6 +9,12 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ de
 const ForgePage = lazy(() => import('./pages/ForgePage').then(m => ({ default: m.ForgePage })));
 const BossPage = lazy(() => import('./pages/BossPage').then(m => ({ default: m.BossPage })));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const AchievementsPage = lazy(() => import('./pages/AchievementsPage').then(m => ({ default: m.AchievementsPage })));
+const StorePage = lazy(() => import('./pages/StorePage').then(m => ({ default: m.StorePage })));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
+const GuildPage = lazy(() => import('./pages/GuildPage').then(m => ({ default: m.GuildPage })));
+const RaidInvitePage = lazy(() => import('./pages/RaidInvitePage').then(m => ({ default: m.RaidInvitePage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 function PageLoader() {
@@ -69,6 +75,66 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <AnalyticsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/achievements"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AchievementsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/store"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <StorePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leaderboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaderboardPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/guild"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <GuildPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/raid/:code"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <RaidInvitePage />
                 </Layout>
               </ProtectedRoute>
             }

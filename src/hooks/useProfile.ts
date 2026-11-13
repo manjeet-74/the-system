@@ -8,6 +8,10 @@ export interface Profile {
   class: string | null;
   courage_test_passed: boolean;
   created_at: string;
+  public_profile: boolean;
+  equipped_title: string | null;
+  equipped_theme: string | null;
+  equipped_frame: string | null;
 }
 
 export function useProfile() {

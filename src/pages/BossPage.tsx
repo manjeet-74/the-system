@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
+import { RaidList, useMyRaids } from '../components/guild/RaidPanel';
 
 interface BossChallenge {
   id: string;
@@ -52,6 +53,18 @@ export function BossPage() {
     onSettled: (_data, _err, { challengeId }) => {
       setPendingIds(prev => { const next = new Set(prev); next.delete(challengeId); return next; });
     },
+  });
+
+  const { data: raids = [] } = useMyRaids();
+  const raidBossIds = new Set(raids.map((r) => r.boss_id));
+
+  const raidMutation = useMutation({
+    mutationFn: async (bossId: string) => {
+      const { error } = await supabase.rpc('create_raid', { p_boss_id: bossId });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my_raids', user?.id] }),
+    onError: (err: any) => setCompleteError(err?.message ?? 'Could not start a raid.'),
   });
 
   const active = challenges.filter((c) => c.status === 'active');
@@ -125,11 +138,26 @@ export function BossPage() {
                     >
                       {pendingIds.has(c.id) ? 'COMPLETING...' : 'DEFEAT BOSS'}
                     </button>
+                    {!raidBossIds.has(c.id) && (
+                      <button
+                        onClick={() => {
+                          setCompleteError('');
+                          raidMutation.mutate(c.id);
+                        }}
+                        disabled={raidMutation.isPending}
+                        className="ml-2 border border-[#3fd6f5]/40 text-[#3fd6f5] hover:bg-[#3fd6f5]/10 font-rajdhani font-bold text-sm px-4 py-1.5 rounded transition-colors cursor-pointer disabled:opacity-50"
+                        title="Invite a friend: clear it together for +150 XP and +75 coins each"
+                      >
+                        {raidMutation.isPending ? 'STARTING...' : 'START CO-OP RAID'}
+                      </button>
+                    )}
                   </div>
                 );
               })
             )}
           </section>
+
+          <RaidList />
 
           <section className="space-y-3">
             <h3 className="font-rajdhani font-bold text-[#e6f1f7] tracking-wider text-sm">

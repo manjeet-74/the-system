@@ -1,0 +1,7 @@
+{
+  "appId": "app.thesystem.hunter",
+  "appName": "THE SYSTEM",
+  "webDir": "dist",
+  "backgroundColor": "#04070d",
+  "server": { "androidScheme": "https" }
+}

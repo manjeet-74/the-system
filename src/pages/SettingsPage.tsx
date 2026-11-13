@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
+import { PushSettings } from '../components/common/PushSettings';
+import { Toggle } from '../components/common/Toggle';
+import { soundEnabled, setSoundEnabled } from '../lib/sound';
 
 interface GitHubLink {
   repo_full_name: string | null;
@@ -27,6 +30,7 @@ export function SettingsPage() {
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('20:00');
   const [notifSaved, setNotifSaved] = useState(false);
+  const [sound, setSound] = useState(soundEnabled);
 
   const githubQuery = useQuery<GitHubLink | null>({
     queryKey: ['github_link', user?.id],
@@ -204,19 +208,27 @@ export function SettingsPage() {
           </button>
         </div>
 
-        {emailEnabled && (
-          <div>
-            <label className="block text-xs font-rajdhani text-[#6d81a0] mb-1 font-semibold">
-              REMINDER TIME (UTC)
-            </label>
-            <input
-              type="time"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
-              className="bg-[#0a0f1c] border border-[#3fd6f5]/30 text-[#e6f1f7] px-3 py-2 rounded text-sm focus:outline-none focus:border-[#3fd6f5] font-rajdhani"
-            />
-          </div>
-        )}
+        <PushSettings />
+
+        <div>
+          <label className="block text-xs font-rajdhani text-[#6d81a0] mb-1 font-semibold">
+            REMINDER TIME (UTC)
+          </label>
+          <input
+            type="time"
+            value={reminderTime}
+            onChange={(e) => setReminderTime(e.target.value)}
+            className="bg-[#0a0f1c] border border-[#3fd6f5]/30 text-[#e6f1f7] px-3 py-2 rounded text-sm focus:outline-none focus:border-[#3fd6f5] font-rajdhani"
+          />
+          <p className="text-[#6d81a0] font-rajdhani text-xs mt-1">
+            Reminders go out at the top of this hour, and only if you still have open quests
+            {(() => {
+              const [h = '20'] = reminderTime.split(':');
+              const local = new Date(Date.UTC(2000, 0, 1, parseInt(h, 10) || 0));
+              return ` — about ${local.toLocaleTimeString([], { hour: 'numeric' })} your time.`;
+            })()}
+          </p>
+        </div>
 
         <button
           onClick={() => saveNotifMutation.mutate()}
@@ -229,6 +241,25 @@ export function SettingsPage() {
         {notifError && (
           <p className="text-[#ff4d5e] font-rajdhani text-xs">{notifError}</p>
         )}
+      </section>
+
+      {/* Interface */}
+      <section className="bg-[#04070d] border border-[#3fd6f5]/20 rounded-lg p-5 space-y-4">
+        <h3 className="font-rajdhani font-bold text-[#e6f1f7] tracking-wider text-sm">INTERFACE</h3>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <span className="font-rajdhani text-[#e6f1f7] text-sm">Sound effects</span>
+            <p className="text-[#6d81a0] font-rajdhani text-xs mt-0.5">The rank-up sting. Saved on this device.</p>
+          </div>
+          <Toggle
+            checked={sound}
+            onChange={(on) => {
+              setSound(on);
+              setSoundEnabled(on);
+            }}
+            label="Sound effects"
+          />
+        </div>
       </section>
     </div>
   );

@@ -59,6 +59,13 @@ export function useAuth() {
       console.error('Error signing out:', error.message);
       throw error;
     }
+    // Don't leave the previous player's store theme painted on the login screen.
+    document.documentElement.removeAttribute('data-theme');
+    try {
+      localStorage.removeItem('system:theme');
+    } catch {
+      /* storage blocked */
+    }
   };
 
   return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };

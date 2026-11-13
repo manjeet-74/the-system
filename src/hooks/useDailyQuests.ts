@@ -94,6 +94,8 @@ export function useDailyQuests() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['daily_logs', user?.id, todayStr] });
       queryClient.invalidateQueries({ queryKey: ['player_stats', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['wallet', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['achievements', user?.id] });
     },
   });
 

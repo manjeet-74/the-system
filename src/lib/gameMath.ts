@@ -22,6 +22,9 @@ export function levelOf(stats: PlayerStatsMath): number {
 
 export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
 
+// Lowest to highest — index comparison tells you which rank is greater.
+export const RANKS: Rank[] = ['E', 'D', 'C', 'B', 'A', 'S'];
+
 export function rankOf(level: number): Rank {
   if (level < 10) return 'E';
   if (level < 20) return 'D';

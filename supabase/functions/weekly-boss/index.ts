@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireCronSecret } from '../_shared/cron.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,15 +28,22 @@ const MONTHLY_BRIEFS = [
   'This month: ship a personal project that is publicly accessible.',
 ];
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  const denied = requireCronSecret(req);
+  if (denied) return denied;
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const now = new Date();
   const weekStart = getWeekStart(now);
   const monthStart = getMonthStart(now);
 
-  // Only run on Monday (weekly) or 1st of month (monthly) — or when invoked manually
-  const isMonday = now.getUTCDay() === 1;
-  const isMonthStart = now.getUTCDate() === 1;
+
+  // Overdue bosses can no longer be completed (complete_boss also enforces this).
+  await supabase
+    .from('boss_challenges')
+    .update({ status: 'expired' })
+    .eq('status', 'active')
+    .lt('deadline', now.toISOString());
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
@@ -51,9 +59,10 @@ Deno.serve(async (_req) => {
     const userId = profile.id;
 
     try {
-      // Weekly boss — insert if none exists for this week start
-      if (isMonday) {
-        const weekDeadline = new Date(now.getTime() + 7 * 86400000);
+      // Weekly boss — make sure one exists for the current week (any weekday, so players
+      // who joined mid-week are not left without one until next Monday).
+      {
+        const weekDeadline = new Date(new Date(`${weekStart}T00:00:00Z`).getTime() + 7 * 86400000);
 
         const { count: weekCount } = await supabase
           .from('boss_challenges')
@@ -75,8 +84,8 @@ Deno.serve(async (_req) => {
         }
       }
 
-      // Monthly boss — insert if none exists for this month start
-      if (isMonthStart) {
+      // Monthly boss — same catch-up rule for the current month.
+      {
         const monthDeadline = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 
         const { count: monthCount } = await supabase
@@ -101,13 +110,6 @@ Deno.serve(async (_req) => {
     } catch (err: any) {
       results.push(`${userId}: ERROR ${err.message}`);
     }
-  }
-
-  if (!isMonday && !isMonthStart) {
-    return new Response(
-      JSON.stringify({ skipped: 'Not Monday or month start. Invoke manually to force-create.' }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
   }
 
   return new Response(JSON.stringify({ processed: results.length, results }), {

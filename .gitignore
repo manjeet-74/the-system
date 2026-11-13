@@ -30,3 +30,6 @@ LEARNING.md
 *.sln
 *.sw?
 
+
+# Contains the cron secret — never commit
+supabase/cron.local.sql

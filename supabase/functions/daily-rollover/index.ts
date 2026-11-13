@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withCors, json, getCallerId } from '../_shared/http.ts';
+import { hasCronSecret } from '../_shared/cron.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -38,15 +40,22 @@ const FORGE_TIERS: Record<number, { tier: string; brief: string; daysDeadline: n
 
 const FORGE_THRESHOLDS = [3, 5, 7, 14, 30];
 
-Deno.serve(async (_req) => {
+Deno.serve(withCors(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-  // Fetch all profiles
-  const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id');
+  // Browser calls roll over only the caller's own account. pg_cron (which sends the
+  // cron secret) rolls over everyone, so inactive players still get penalties/new quests.
+  let profiles: { id: string }[] | null;
+  let profilesError: { message: string } | null = null;
+  if (hasCronSecret(req)) {
+    ({ data: profiles, error: profilesError } = await supabase.from('profiles').select('id'));
+  } else {
+    const callerId = await getCallerId(req, supabase);
+    if (!callerId) return json({ error: 'unauthorized' }, 401);
+    profiles = [{ id: callerId }];
+  }
 
   if (profilesError) {
     return new Response(JSON.stringify({ error: profilesError.message }), { status: 500 });
@@ -210,7 +219,7 @@ Deno.serve(async (_req) => {
   return new Response(JSON.stringify({ processed: results.length, results }), {
     headers: { 'Content-Type': 'application/json' },
   });
-});
+}));
 
 async function generateTodaysLogs(
   supabase: ReturnType<typeof createClient>,
