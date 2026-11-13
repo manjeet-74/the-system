@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
-  const { signInWithGitHub, signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation } = useAuth();
 
   // mode: are we logging in or creating an account?
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -12,9 +12,46 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
 
+  // Resend-activation-link state. The cooldown stops accidental spam and keeps us inside
+  // Supabase's email rate limit.
+  const RESEND_COOLDOWN = 60;
+  const [cooldown, setCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    if (!email || resending || cooldown > 0) return;
+    setResending(true);
+    setResendMsg(null);
+    try {
+      await resendConfirmation(email);
+      setResendMsg({ ok: true, text: `Sent again to ${email}. Check spam/junk too.` });
+      setCooldown(RESEND_COOLDOWN);
+    } catch (err: any) {
+      const msg: string = err?.message ?? 'Could not resend the email.';
+      setResendMsg({
+        ok: false,
+        text: /rate limit|seconds|too many/i.test(msg)
+          ? 'Too many emails requested. Wait a minute and try again.'
+          : msg,
+      });
+      if (/rate limit|seconds|too many/i.test(msg)) setCooldown(RESEND_COOLDOWN);
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnconfirmed(false);
 
     // Edge case: empty fields. The browser's `required` catches most of this,
     // but we guard anyway so the error is friendly, not a raw API message.
@@ -33,6 +70,8 @@ export function LoginPage() {
         const { needsConfirmation } = await signUpWithEmail(email, password);
         if (needsConfirmation) {
           // Project has "Confirm email" ON — no session yet. Tell them to check inbox.
+          setResendMsg(null);
+          setCooldown(RESEND_COOLDOWN); // the email we just triggered counts as the first send
           setCheckEmail(true);
         }
         // If no confirmation needed, onAuthStateChange fires and the app
@@ -43,7 +82,13 @@ export function LoginPage() {
     } catch (err: any) {
       // Supabase returns human-readable messages like "Invalid login credentials"
       // or "User already registered" — surface them directly.
-      setError(err?.message ?? 'Something went wrong. Try again.');
+      const msg: string = err?.message ?? 'Something went wrong. Try again.';
+      if (/email not confirmed/i.test(msg)) {
+        setUnconfirmed(true);
+        setError('Your email is not activated yet. Open the link we emailed you, or request a new one.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +108,22 @@ export function LoginPage() {
           </p>
           <button
             type="button"
+            onClick={handleResend}
+            disabled={resending || cooldown > 0}
+            className="w-full mb-3 border border-[#3fd6f5]/50 text-[#3fd6f5] hover:bg-[#3fd6f5]/10 font-rajdhani font-bold text-sm py-2.5 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {resending ? 'SENDING...' : cooldown > 0 ? `RESEND LINK IN ${cooldown}s` : 'RESEND ACTIVATION LINK'}
+          </button>
+          {resendMsg && (
+            <p className={`text-sm mb-4 ${resendMsg.ok ? 'text-emerald-400' : 'text-[#ff4d5e]'}`}>{resendMsg.text}</p>
+          )}
+          <p className="text-[#6d81a0] text-xs mb-4">
+            Nothing after a few minutes? Check spam, make sure the address is spelled right, then resend.
+          </p>
+          <button
+            type="button"
             onClick={() => {
+              setResendMsg(null);
               setCheckEmail(false);
               setMode('signin');
               setPassword('');
@@ -117,6 +177,20 @@ export function LoginPage() {
 
           {error && (
             <p className="text-[#ff4d5e] text-sm mb-4 text-center">{error}</p>
+          )}
+          {unconfirmed && (
+            <div className="mb-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckEmail(true);
+                  handleResend();
+                }}
+                className="text-[#3fd6f5] text-sm hover:underline cursor-pointer"
+              >
+                Send a new activation link
+              </button>
+            </div>
           )}
 
           <button

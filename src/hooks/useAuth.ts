@@ -48,9 +48,29 @@ export function useAuth() {
   // if the Supabase project has "Confirm email" ON, data.session is null and the
   // user must click a link in their inbox before they can log in.
   const signUpWithEmail = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    });
     if (error) throw error;
+    // With "Confirm email" on, signing up an address that already has an account does NOT
+    // error (that would reveal which emails are registered). Supabase returns a user with an
+    // empty identities list and sends nothing — detect it so the player isn't left waiting.
+    if (data.user && data.user.identities?.length === 0) {
+      throw new Error('An account with this email already exists. Try signing in instead.');
+    }
     return { needsConfirmation: data.session === null };
+  };
+
+  // Send the activation link again (the first one may be late, in spam, or expired).
+  const resendConfirmation = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    });
+    if (error) throw error;
   };
 
   const signOut = async () => {
@@ -68,5 +88,5 @@ export function useAuth() {
     }
   };
 
-  return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
+  return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation, signOut };
 }
