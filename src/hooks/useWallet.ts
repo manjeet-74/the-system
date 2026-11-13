@@ -26,7 +26,10 @@ export function useWallet() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`player_wallet:${user.id}`)
+      // Unique name per hook instance: supabase-js returns the *existing* channel for a repeated
+      // topic, and adding listeners to an already-subscribed channel throws. Several components
+      // (HUD, rank-up overlay, wallet chips) watch the same table at once.
+      .channel(`player_wallet:${user.id}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'player_wallet', filter: `user_id=eq.${user.id}` },

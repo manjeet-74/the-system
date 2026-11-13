@@ -41,7 +41,10 @@ export function useStreak() {
     if (!user) return;
 
     const channel = supabase
-      .channel(`streaks:${user.id}`)
+      // Unique name per hook instance: supabase-js returns the *existing* channel for a repeated
+      // topic, and adding listeners to an already-subscribed channel throws. Several components
+      // (HUD, rank-up overlay, wallet chips) watch the same table at once.
+      .channel(`streaks:${user.id}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
