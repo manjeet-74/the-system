@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
-  const { signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation } = useAuth();
+  const { signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation, requestPasswordReset } = useAuth();
 
   // mode: are we logging in or creating an account?
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,7 @@ export function LoginPage() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -55,6 +56,24 @@ export function LoginPage() {
 
     // Edge case: empty fields. The browser's `required` catches most of this,
     // but we guard anyway so the error is friendly, not a raw API message.
+    if (mode === 'forgot') {
+      if (!email) {
+        setError('Enter your email.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await requestPasswordReset(email);
+        setResetSent(true);
+        setCooldown(RESEND_COOLDOWN);
+      } catch (err: any) {
+        const msg: string = err?.message ?? 'Could not send the reset email.';
+        setError(/rate limit|seconds|too many/i.test(msg) ? 'Too many emails requested. Wait a minute and try again.' : msg);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (!email || !password) {
       setError('Enter both an email and a password.');
       return;
@@ -162,6 +181,8 @@ export function LoginPage() {
             placeholder="hunter@example.com"
           />
 
+          {mode !== 'forgot' && (
+          <>
           <label className="block text-[#6d81a0] text-xs font-rajdhani tracking-wide mb-1 uppercase">
             Password
           </label>
@@ -175,8 +196,31 @@ export function LoginPage() {
             placeholder="••••••••"
           />
 
+          </>
+          )}
+
           {error && (
             <p className="text-[#ff4d5e] text-sm mb-4 text-center">{error}</p>
+          )}
+          {mode === 'forgot' && resetSent && (
+            <p className="text-emerald-400 text-sm mb-4 text-center">
+              If an account exists for {email}, a reset link is on its way. Check spam too.
+            </p>
+          )}
+          {mode === 'signin' && (
+            <div className="mb-4 text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('forgot');
+                  setError(null);
+                  setResetSent(false);
+                }}
+                className="text-[#6d81a0] text-xs hover:text-[#3fd6f5] hover:underline cursor-pointer"
+              >
+                Forgot password?
+              </button>
+            </div>
           )}
           {unconfirmed && (
             <div className="mb-4 text-center">
@@ -195,29 +239,40 @@ export function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (mode === 'forgot' && cooldown > 0)}
             className="w-full bg-[#3fd6f5] text-[#04070d] font-rajdhani font-bold text-lg py-3 px-6 rounded transition-all duration-200 hover:bg-[#3fd6f5]/90 hover:shadow-[0_0_15px_rgba(63,214,245,0.5)] active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
               ? 'WORKING...'
-              : mode === 'signup'
-                ? 'CREATE ACCOUNT'
-                : 'SIGN IN'}
+              : mode === 'forgot'
+                ? cooldown > 0
+                  ? `RESEND IN ${cooldown}s`
+                  : resetSent
+                    ? 'SEND AGAIN'
+                    : 'SEND RESET LINK'
+                : mode === 'signup'
+                  ? 'CREATE ACCOUNT'
+                  : 'SIGN IN'}
           </button>
         </form>
 
         {/* Toggle between sign in and sign up */}
         <p className="text-[#6d81a0] text-sm mb-6">
-          {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
+          {mode === 'forgot'
+            ? 'Remembered it?'
+            : mode === 'signup'
+              ? 'Already have an account?'
+              : "Don't have an account?"}{' '}
           <button
             type="button"
             onClick={() => {
-              setMode(mode === 'signup' ? 'signin' : 'signup');
+              setMode(mode === 'signin' ? 'signup' : 'signin');
               setError(null);
+              setResetSent(false);
             }}
             className="text-[#3fd6f5] hover:underline cursor-pointer"
           >
-            {mode === 'signup' ? 'Sign in' : 'Create one'}
+            {mode === 'signin' ? 'Create one' : 'Sign in'}
           </button>
         </p>
 

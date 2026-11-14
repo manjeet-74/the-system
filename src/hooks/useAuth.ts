@@ -73,6 +73,21 @@ export function useAuth() {
     if (error) throw error;
   };
 
+  // Email a password-reset link. The link lands on /reset-password with a short-lived
+  // recovery session. Supabase answers "ok" even for unknown emails (no account enumeration).
+  const requestPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  };
+
+  // Set a new password for the currently signed-in (recovery) session.
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -88,5 +103,5 @@ export function useAuth() {
     }
   };
 
-  return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation, signOut };
+  return { session, user, loading, signInWithGitHub, signInWithEmail, signUpWithEmail, resendConfirmation, requestPasswordReset, updatePassword, signOut };
 }
